@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candy Crush - Giorgio</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            user-select: none;
+        }
+
+        h1 {
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+            margin-bottom: 15px;
+            font-size: 32px;
+            text-align: center;
+        }
+
+        .game-info {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .info-box {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            min-width: 120px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .info-box .label {
+            font-size: 12px;
+            color: #666;
+            display: block;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .info-box .value {
+            font-size: 24px;
+            color: #667eea;
+        }
+
+        .info-box.target .value {
+            color: #e74c3c;
+        }
+
+        .info-box.moves .value {
+            color: #27ae60;
+        }
+
+        .info-box.timer .value {
+            color: #f39c12;
+        }
+
+        .grid-container {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 3px solid rgba(255,255,255,0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 70px);
+            grid-template-rows: repeat(8, 70px);
+            gap: 4px;
+        }
+
+        .grid div {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            cursor: grab;
+            transition: transform 0.15s, box-shadow 0.15s;
+            border: 3px solid transparent;
+            line-height: 1;
+        }
+
+        .grid div:hover {
+            transform: scale(1.08);
+            z-index: 10;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            border-color: #667eea;
+        }
+
+        .grid div:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+        }
+
+        .grid div.matched {
+            animation: pop 0.3s ease-out forwards;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.5; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .progress-bar {
+            width: 560px;
+            max-width: 100%;
+            height: 25px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 15px;
+            margin-top: 15px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: slideIn 0.4s ease-out;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .modal-content .stars {
+            font-size: 55px;
+            margin: 20px 0;
+            letter-spacing: 10px;
+        }
+
+        .modal-content .star {
+            color: #ddd;
+            transition: color 0.3s, transform 0.3s;
+        }
+
+        .modal-content .star.earned {
+            color: #f1c40f;
+            animation: starPulse 0.5s ease-in-out forwards;
+        }
+
+        @keyframes starPulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-content p {
+            color: #555;
+            margin: 12px 0;
+            font-size: 18px;
+        }
+
+        .modal-content .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+
+        .modal-content .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-content .btn:active {
+            transform: translateY(0);
+        }
+
+        .modal-content .btn.restart {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .modal-content .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 650px) {
+            .grid {
+                grid-template-columns: repeat(8, 40px);
+                grid-template-rows: repeat(8, 40px);
+                gap: 2px;
+            }
+
+            .grid div {
+                width: 40px;
+                height: 40px;
+                font-size: 24px;
+                border-radius: 8px;
+            }
+
+            .grid-container {
+                padding: 8px;
+            }
+
+            .game-info {
+                gap: 8px;
+            }
+
+            .info-box {
+                padding: 8px 12px;
+                min-width: 85px;
+                font-size: 14px;
+            }
+
+            .info-box .value {
+                font-size: 18px;
+            }
+
+            .info-box .label {
+                font-size: 10px;
+            }
+
+            .progress-bar {
+                width: 320px;
+                height: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .modal-content {
+                padding: 25px;
+            }
+
+            .modal-content h2 {
+                font-size: 22px;
+            }
+
+            .modal-content .stars {
+                font-size: 40px;
+            }
+
+            .modal-content .btn {
+                padding: 12px 25px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🍓 Candy Crush 🍓</h1>
+    
+    <div class="game-info">
+        <div class="info-box">
+            <span class="label">Livello</span>
+            <span class="value" id="level">1</span>
+        </div>
+        <div class="info-box target">
+            <span class="label">Target</span>
+            <span class="value" id="targetScore">1000</span>
+        </div>
+        <div class="info-box">
+            <span class="label">Punteggio</span>
+            <span class="value" id="score">0</span>
+        </div>
+        <div class="info-box moves">
+            <span class="label">Mosse</span>
+            <span class="value" id="moves">20</span>
+        </div>
+        <div class="info-box timer">
+            <span class="label">Tempo</span>
+            <span class="value" id="timer">00:00</span>
+        </div>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill">0%</div>
+    </div>
+
+    <div class="grid-container">
+        <div class="grid"></div>
+    </div>
+
+    <!-- Level Complete Modal -->
+    <div class="modal" id="levelModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">🎉 Livello Completato!</h2>
+            <div class="stars" id="starsDisplay">
+                <span class="star">★</span>
+                <span class="star">★</span>
+                <span class="star">★</span>
+            </div>
+            <p id="modalMessage">Punteggio: 1500</p>
+            <p id="modalStats">Mosse rimanenti: 5</p>
+            <p id="modalTime">Tempo: 01:23</p>
+            <button class="btn" id="nextLevelBtn" onclick="nextLevel()">Prossimo Livello →</button>
+            <button class="btn restart" onclick="restartLevel()">Riprova</button>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal" id="gameOverModal">
+        <div class="modal-content">
+            <h2>😔 Game Over</h2>
+            <p>Hai esaurito le mosse!</p>
+            <p id="finalScore">Punteggio finale: 0</p>
+            <p id="finalTime">Tempo: 00:00</p>
+            <button class="btn" onclick="restartGame()">Ricomincia da Capo</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const grid = document.querySelector('.grid');
+            const scoreDisplay = document.getElementById('score');
+            const targetScoreDisplay = document.getElementById('targetScore');
+            const movesDisplay = document.getElementById('moves');
+            const levelDisplay = document.getElementById('level');
+            const timerDisplay = document.getElementById('timer');
+            const progressFill = document.getElementById('progressFill');
+            const levelModal = document.getElementById('levelModal');
+            const gameOverModal = document.getElementById('gameOverModal');
+
+            const width = 8;
+            const squares = [];
+            
+            const levels = [
+                { level: 1, targetScore: 1000, moves: 20 },
+                { level: 2, targetScore: 2000, moves: 25 },
+                { level: 3, targetScore: 3500, moves: 25 },
+                { level: 4, targetScore: 5000, moves: 30 },
+                { level: 5, targetScore: 7000, moves: 30 },
+                { level: 6, targetScore: 9000, moves: 35 },
+                { level: 7, targetScore: 12000, moves: 35 },
+                { level: 8, targetScore: 15000, moves: 40 },
+                { level: 9, targetScore: 18000, moves: 40 },
+                { level: 10, targetScore: 22000, moves: 45 }
+            ];
+
+            let currentLevel = 1;
+            let score = 0;
+            let moves = 20;
+            let targetScore = 1000;
+            let gameTime = 0;
+            let timerInterval;
+            let gameActive = true;
+            let isProcessing = false;
+
+            const candySymbols = [
+                {name: 'strawberry', emoji: '🍓'},
+                {name: 'orange', emoji: '🍊'},
+                {name: 'lemon', emoji: '🍋'},
+                {name: 'grape', emoji: '🍇'},
+                {name: 'blueberry', emoji: '🫐'},
+                {name: 'watermelon', emoji: '🍉'}
+            ];
+
+            function loadProgress() {
+                const saved = localStorage.getItem('candyCrushProgress');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    currentLevel = data.currentLevel || 1;
+                }
+            }
+
+            function saveProgress() {
+                localStorage.setItem('candyCrushProgress', JSON.stringify({
+                    currentLevel: currentLevel,
+                    maxLevel: currentLevel
+                }));
+            }
+
+            function initLevel() {
+                const levelConfig = levels.find(l => l.level === currentLevel) || 
+                                   { level: currentLevel, targetScore: 1000 + (currentLevel * 1000), moves: 20 + currentLevel };
+                
+                targetScore = levelConfig.targetScore;
+                moves = levelConfig.moves;
+                score = 0;
+                gameTime = 0;
+                gameActive = true;
+                isProcessing = false;
+
+                levelDisplay.textContent = currentLevel;
+                targetScoreDisplay.textContent = targetScore;
+                scoreDisplay.textContent = score;
+                movesDisplay.textContent = moves;
+                updateProgress();
+                
+                levelModal.style.display = 'none';
+                gameOverModal.style.display = 'none';
+
+                clearInterval(timerInterval);
+                timerInterval = setInterval(updateTimer, 1000);
+                updateTimerDisplay();
+
+                createBoard();
+            }
+
+            function updateTimer() {
+                if (gameActive) {
+                    gameTime++;
+                    updateTimerDisplay();
+                }
+            }
+
+            function updateTimerDisplay() {
+                const minutes = Math.floor(gameTime / 60);
+                const seconds = gameTime % 60;
+                timerDisplay.textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            function createBoard() {
+                grid.innerHTML = '';
+                squares.length = 0;
+                
+                for (let i = 0; i < width * width; i++) {
+                    const square = document.createElement('div');
+                    square.setAttribute('draggable', true);
+                    square.setAttribute('id', i);
+                    
+                    let randomIndex = Math.floor(Math.random() * candySymbols.length);
+                    let selectedSymbol = candySymbols[randomIndex];
+                    square.classList.add(selectedSymbol.name);
+                    square.textContent = selectedSymbol.emoji;
+                    
+                    grid.appendChild(square);
+                    squares.push(square);
+                }
+
+                setupEventListeners();
+            }
+
+            function setupEventListeners() {
+                squares.forEach(square => {
+                    square.addEventListener('dragstart', dragStart);
+                    square.addEventListener('dragend', dragEnd);
+                    square.addEventListener('dragover', dragOver);
+                    square.addEventListener('dragenter', dragEnter);
+                    square.addEventListener('dragleave', dragLeave);
+                    square.addEventListener('drop', dragDrop);
+                });
+
+                let touchStartX, touchStartY;
+                squares.forEach(square => {
+                    square.addEventListener('touchstart', (e) => touchStart(e, square), {passive: false});
+                    square.addEventListener('touchmove', touchMove, {passive: false});
+                    square.addEventListener('touchend', (e) => touchEnd(e, square), {passive: false});
+                });
+            }
+
+            let symbolBeingDragged;
+            let symbolBeingReplaced;
+            let squareIdBeingDragged;
+            let squareIdBeingReplaced;
+
+            function dragStart() {
+                if (!gameActive || isProcessing) return;
+                symbolBeingDragged = this.textContent;
+                squareIdBeingDragged = parseInt(this.id);
+                this.style.opacity = '0.5';
+            }
+
+            function dragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            }
+
+            function dragEnter(e) {
+                e.preventDefault();
+                if (!isProcessing) {
+                    this.style.borderColor = '#667eea';
+                    this.style.backgroundColor = 'rgba(102, 126, 234, 0.2)';
+                }
+            }
+
+            function dragLeave() {
+                this.style.borderColor = 'transparent';
+                this.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            }
+
+            function dragDrop(e) {
+                e.preventDefault();
+                if (!gameActive || isProcessing) return;
+                symbolBeingReplaced = this.textContent;
+                squareIdBeingReplaced = parseInt(this.id);
+                
+                this.style.borderColor = 'transparent';
+                this.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            }
+
+            function dragEnd() {
+                this.style.opacity = '1';
+                this.style.borderColor = 'transparent';
+                this.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+                
+                if (!gameActive || isProcessing || squareIdBeingReplaced === undefined) {
+                    squareIdBeingReplaced = undefined;
+                    return;
+                }
+                
+                let validMoves = [
+                    squareIdBeingDragged - 1,
+                    squareIdBeingDragged - width,
+                    squareIdBeingDragged + 1,
+                    squareIdBeingDragged + width
+                ];
+
+                // Controlla bordi per mosse orizzontali
+                const isLeftEdge = squareIdBeingDragged % width === 0;
+                const isRightEdge = squareIdBeingDragged % width === width - 1;
+                
+                if (isLeftEdge && squareIdBeingReplaced === squareIdBeingDragged - 1) {
+                    squareIdBeingReplaced = undefined;
+                    return;
+                }
+                if (isRightEdge && squareIdBeingReplaced === squareIdBeingDragged + 1) {
+                    squareIdBeingReplaced = undefined;
+                    return;
+                }
+
+                let validMove = validMoves.includes(squareIdBeingReplaced);
+
+                if (validMove) {
+                    swapSymbols(squareIdBeingDragged, squareIdBeingReplaced);
+                    
+                    setTimeout(() => {
+                        let hasMatch = checkAllMatches();
+                        
+                        if (hasMatch) {
+                            moves--;
+                            movesDisplay.textContent = moves;
+                            updateProgress();
+                            setTimeout(checkLevelStatus, 500);
+                        } else {
+                            swapSymbols(squareIdBeingDragged, squareIdBeingReplaced);
+                        }
+                        
+                        squareIdBeingReplaced = undefined;
+                        symbolBeingDragged = null;
+                        symbolBeingReplaced = null;
+                        squareIdBeingDragged = null;
+                    }, 150);
+                } else {
+                    squareIdBeingReplaced = undefined;
+                    symbolBeingDragged = null;
+                    symbolBeingReplaced = null;
+                    squareIdBeingDragged = null;
+                }
+            }
+
+            function touchStart(e, square) {
+                if (!gameActive || isProcessing) return;
+                e.preventDefault();
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+                squareIdBeingDragged = parseInt(square.id);
+                symbolBeingDragged = square.textContent;
+                square.style.opacity = '0.5';
+            }
+
+            function touchMove(e) {
+                e.preventDefault();
+            }
+
+            function touchEnd(e, square) {
+                if (!gameActive || isProcessing) return;
+                e.preventDefault();
+                square.style.opacity = '1';
+                
+                let touchEndX = e.changedTouches[0].screenX;
+                let touchEndY = e.changedTouches[0].screenY;
+                
+                let diffX = touchEndX - touchStartX;
+                let diffY = touchEndY - touchStartY;
+                
+                let targetId = squareIdBeingDragged;
+                
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (diffX > 30) targetId = squareIdBeingDragged + 1;
+                    else if (diffX < -30) targetId = squareIdBeingDragged - 1;
+                } else {
+                    if (diffY > 30) targetId = squareIdBeingDragged + width;
+                    else if (diffY < -30) targetId = squareIdBeingDragged - width;
+                }
+                
+                // Controlla bordi
+                const isLeftEdge = squareIdBeingDragged % width === 0;
+                const isRightEdge = squareIdBeingDragged % width === width - 1;
+                
+                if (isLeftEdge && targetId === squareIdBeingDragged - 1) return;
+                if (isRightEdge && targetId === squareIdBeingDragged + 1) return;
+                
+                if (targetId >= 0 && targetId < 64 && targetId !== squareIdBeingDragged) {
+                    squareIdBeingReplaced = targetId;
+                    symbolBeingReplaced = squares[targetId].textContent;
+                    
+                    swapSymbols(squareIdBeingDragged, squareIdBeingReplaced);
+                    
+                    setTimeout(() => {
+                        let hasMatch = checkAllMatches();
+                        
+                        if (hasMatch) {
+                            moves--;
+                            movesDisplay.textContent = moves;
+                            updateProgress();
+                            setTimeout(checkLevelStatus, 500);
+                        } else {
+                            swapSymbols(squareIdBeingDragged, squareIdBeingReplaced);
+                        }
+                        
+                        squareIdBeingReplaced = undefined;
+                        symbolBeingDragged = null;
+                        symbolBeingReplaced = null;
+                        squareIdBeingDragged = null;
+                    }, 150);
+                }
+            }
+
+            function swapSymbols(id1, id2) {
+                const tempText = squares[id1].textContent;
+                const tempClass = squares[id1].className;
+                
+                squares[id1].textContent = squares[id2].textContent;
+                squares[id1].className = squares[id2].className;
+                squares[id2].textContent = tempText;
+                squares[id2].className = tempClass;
+            }
+
+            function getClassFromEmoji(emoji) {
+                const symbol = candySymbols.find(s => s.emoji === emoji);
+                return symbol ? symbol.name : '';
+            }
+
+            function checkAllMatches() {
+                let rowMatch = checkRowForMatch();
+                let colMatch = checkColumnForMatch();
+                let squareMatch = checkSquareForMatch();
+                return rowMatch || colMatch || squareMatch;
+            }
+
+            function checkRowForMatch() {
+                let matchFound = false;
+                for (let i = 0; i < 64; i++) {
+                    if (i % width > width - 3) continue;
+
+                    let decidedSymbol = squares[i].textContent;
+                    if (decidedSymbol === '') continue;
+
+                    let matchCount = 0;
+                    let matchIndices = [];
+                    
+                    for (let j = 0; j < 8; j++) {
+                        let index = i + j;
+                        if (index < 64 && squares[index].textContent === decidedSymbol) {
+                            matchCount++;
+                            matchIndices.push(index);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (matchCount >= 3) {
+                        matchFound = true;
+                        score += matchCount * 10;
+                        scoreDisplay.textContent = score;
+                        matchIndices.forEach(index => {
+                            squares[index].classList.add('matched');
+                            setTimeout(() => {
+                                squares[index].textContent = '';
+                                squares[index].className = '';
+                            }, 300);
+                        });
+                    }
+                }
+                return matchFound;
+            }
+
+            function checkColumnForMatch() {
+                let matchFound = false;
+                for (let i = 0; i < 64; i++) {
+                    if (i > 47) continue;
+
+                    let decidedSymbol = squares[i].textContent;
+                    if (decidedSymbol === '') continue;
+
+                    let matchCount = 0;
+                    let matchIndices = [];
+                    
+                    for (let j = 0; j < 8; j++) {
+                        let index = i + (j * width);
+                        if (index < 64 && squares[index].textContent === decidedSymbol) {
+                            matchCount++;
+                            matchIndices.push(index);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (matchCount >= 3) {
+                        matchFound = true;
+                        score += matchCount * 10;
+                        scoreDisplay.textContent = score;
+                        matchIndices.forEach(index => {
+                            squares[index].classList.add('matched');
+                            setTimeout(() => {
+                                squares[index].textContent = '';
+                                squares[index].className = '';
+                            }, 300);
+                        });
+                    }
+                }
+                return matchFound;
+            }
+
+            function checkSquareForMatch() {
+                let matchFound = false;
+                
+                for (let i = 0; i < 64; i++) {
+                    if (i % width === width - 1) continue;
+                    if (i > 55) continue;
+                    
+                    let topLeft = i;
+                    let topRight = i + 1;
+                    let bottomLeft = i + width;
+                    let bottomRight = i + width + 1;
+                    
+                    let symbol = squares[topLeft].textContent;
+                    
+                    if (symbol !== '' &&
+                        squares[topRight].textContent === symbol &&
+                        squares[bottomLeft].textContent === symbol &&
+                        squares[bottomRight].textContent === symbol) {
+                        
+                        matchFound = true;
+                        score += 40;
+                        scoreDisplay.textContent = score;
+                        
+                        [topLeft, topRight, bottomLeft, bottomRight].forEach(index => {
+                            squares[index].classList.add('matched');
+                            setTimeout(() => {
+                                squares[index].textContent = '';
+                                squares[index].className = '';
+                            }, 300);
+                        });
+                    }
+                }
+                return matchFound;
+            }
+
+            function updateProgress() {
+                const percentage = Math.min((score / targetScore) * 100, 100);
+                progressFill.style.width = percentage + '%';
+                progressFill.textContent = Math.round(percentage) + '%';
+            }
+
+            function checkLevelStatus() {
+                if (score >= targetScore) {
+                    gameActive = false;
+                    clearInterval(timerInterval);
+                    showLevelComplete();
+                } else if (moves <= 0) {
+                    setTimeout(() => {
+                        if (score < targetScore) {
+                            gameActive = false;
+                            clearInterval(timerInterval);
+                            showGameOver();
+                        }
+                    }, 500);
+                }
+            }
+
+            function showLevelComplete() {
+                const stars = calculateStars();
+                const starsDisplay = document.getElementById('starsDisplay');
+                const starElements = starsDisplay.querySelectorAll('.star');
+                
+                starElements.forEach((star, index) => {
+                    star.classList.remove('earned');
+                    if (index < stars) {
+                        setTimeout(() => {
+                            star.classList.add('earned');
+                        }, index * 200);
+                    }
+                });
+
+                document.getElementById('modalTitle').textContent = '🎉 Livello Completato!';
+                document.getElementById('modalMessage').textContent = `Punteggio: ${score}`;
+                document.getElementById('modalStats').textContent = `Mosse rimanenti: ${moves}`;
+                document.getElementById('modalTime').textContent = `Tempo: ${timerDisplay.textContent}`;
+                
+                const nextBtn = document.getElementById('nextLevelBtn');
+                if (currentLevel >= levels.length) {
+                    nextBtn.textContent = '🏆 Hai completato tutti i livelli!';
+                    nextBtn.disabled = true;
+                } else {
+                    nextBtn.textContent = 'Prossimo Livello →';
+                    nextBtn.disabled = false;
+                }
+                
+                setTimeout(() => {
+                    levelModal.style.display = 'flex';
+                }, 500);
+                saveProgress();
+            }
+
+            function calculateStars() {
+                if (moves >= 10) return 3;
+                if (moves >= 5) return 2;
+                return 1;
+            }
+
+            function showGameOver() {
+                document.getElementById('finalScore').textContent = `Punteggio finale: ${score}`;
+                document.getElementById('finalTime').textContent = `Tempo: ${timerDisplay.textContent}`;
+                setTimeout(() => {
+                    gameOverModal.style.display = 'flex';
+                }, 500);
+            }
+
+            window.nextLevel = function() {
+                currentLevel++;
+                if (currentLevel > levels.length) {
+                    currentLevel = 1;
+                }
+                initLevel();
+            };
+
+            window.restartLevel = function() {
+                initLevel();
+            };
+
+            window.restartGame = function() {
+                currentLevel = 1;
+                localStorage.removeItem('candyCrushProgress');
+                initLevel();
+            };
+
+            window.setInterval(function() {
+                if (gameActive && !isProcessing) {
+                    moveDown();
+                }
+            }, 150);
+
+            function moveDown() {
+                let moved = false;
+                for (let i = 55; i >= 0; i--) {
+                    if (squares[i + width].textContent === '') {
+                        if (squares[i].textContent !== '') {
+                            squares[i + width].textContent = squares[i].textContent;
+                            squares[i + width].className = squares[i].className;
+                            squares[i].textContent = '';
+                            squares[i].className = '';
+                            moved = true;
+                        }
+                    }
+                }
+                
+                for(let i = 0; i < width; i++) {
+                    if(squares[i].textContent === '') {
+                        let randomIndex = Math.floor(Math.random() * candySymbols.length);
+                        let selectedSymbol = candySymbols[randomIndex];
+                        squares[i].textContent = selectedSymbol.emoji;
+                        squares[i].className = selectedSymbol.name;
+                        moved = true;
+                    }
+                }
+                
+                if (moved) {
+                    setTimeout(() => checkAllMatches(), 200);
+                }
+            }
+
+            loadProgress();
+            initLevel();
+        });
+    </script>
+</body>
+</html>
